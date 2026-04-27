@@ -33,7 +33,8 @@
   let fuzzyThreshold = 0.55;
 
   // Configuration du suivi
-  const LOOKAHEAD = 40; // Fenêtre large pour ne jamais perdre le fil
+  const LOOKAHEAD = 20; // Fenêtre raisonnable pour éviter les faux positifs
+  const MAX_JUMP  = 15; // Sécurité absolue : on ne saute jamais plus de 15 mots
 
   // ════════════════════════════════════════════
   // 1. DRAWER
@@ -243,33 +244,43 @@
    * On avance le prompteur jusqu'au mot le plus lointain trouvé.
    */
   function matchPhrase(heardWords) {
-    const searchStart = Math.max(0, currentIndex - 5); // On regarde un peu en arrière pour l'ancrage
+    const searchStart = Math.max(0, currentIndex - 3);
     const searchEnd   = Math.min(currentIndex + LOOKAHEAD, words.length);
     
-    let furthestIdxFound = -1;
+    let bestIdxFound = -1;
 
     for (const heard of heardWords) {
       if (heard.length < 2) continue;
 
-      let bestScoreForThisWord = 0;
-      let bestIdxForThisWord   = -1;
+      let wordBestScore = 0;
+      let wordBestIdx   = -1;
 
       for (let i = searchStart; i < searchEnd; i++) {
         const score = similarity(heard, words[i].normalized);
-        if (score > bestScoreForThisWord) {
-          bestScoreForThisWord = score;
-          bestIdxForThisWord = i;
+        if (score > wordBestScore) {
+          wordBestScore = score;
+          wordBestIdx = i;
         }
       }
 
-      if (bestScoreForThisWord >= fuzzyThreshold) {
-        furthestIdxFound = Math.max(furthestIdxFound, bestIdxForThisWord);
+      if (wordBestScore >= fuzzyThreshold) {
+        // SÉCURITÉ : Un mot court ( < 4 lettres) n'a pas le droit de faire sauter le prompteur 
+        // de plus de 3 mots d'un coup (évite les confusions sur "en", "le", "de", etc.)
+        const jumpDistance = wordBestIdx - currentIndex;
+        if (heard.length < 4 && jumpDistance > 3) {
+          continue; 
+        }
+        
+        bestIdxFound = Math.max(bestIdxFound, wordBestIdx);
       }
     }
 
-    if (furthestIdxFound !== -1 && furthestIdxFound >= currentIndex) {
-      console.log(`  ✓ Avancement vers index ${furthestIdxFound} ("${words[furthestIdxFound].raw}")`);
-      advanceTo(furthestIdxFound);
+    if (bestIdxFound !== -1 && bestIdxFound >= currentIndex) {
+      // SÉCURITÉ : On plafonne le saut global
+      const finalIdx = Math.min(bestIdxFound, currentIndex + MAX_JUMP);
+      
+      console.log(`  ✓ Avancement vers ${finalIdx} (demandé: ${bestIdxFound})`);
+      advanceTo(finalIdx);
     }
   }
 
