@@ -185,9 +185,9 @@
   function createRecognition() {
     const rec = new SpeechRecognition();
     rec.continuous      = true;
-    rec.interimResults  = true;
+    rec.interimResults  = false; // Désactivé pour éviter les doubles matches et les sauts brusques
     rec.lang            = 'fr-FR';
-    rec.maxAlternatives = 3;
+    rec.maxAlternatives = 1;
 
     rec.onstart = () => {
       console.log('%c[Prompteo] 🎙️ Écoute démarrée', 'color:#4caf50');
@@ -266,10 +266,8 @@
   }
 
   function matchHeardWords(heardWords, isFinal) {
-    const searchEnd  = Math.min(currentIndex + LOOKAHEAD, words.length);
-    // On mémorise l'index de départ AVANT la boucle pour que le plafond
-    // s'applique sur l'ensemble du résultat vocal, pas mot par mot
-    const startIndex = currentIndex;
+    const searchEnd = Math.min(currentIndex + LOOKAHEAD, words.length);
+    let bestMatchInBatch = -1;
 
     for (const heard of heardWords) {
       if (heard.length < 2) continue;
@@ -277,31 +275,31 @@
       let bestScore = 0;
       let bestIdx   = -1;
 
+      // On cherche dans la fenêtre
       for (let i = currentIndex; i < searchEnd; i++) {
         const scriptWord = words[i].normalized;
-        if (scriptWord.length < 2) continue;
         const score = similarity(heard, scriptWord);
-        if (score > bestScore) { bestScore = score; bestIdx = i; }
-      }
-
-      if (bestScore >= fuzzyThreshold && bestIdx >= 0) {
-        // ── PLAFOND : on ne saute jamais plus de MAX_ADVANCE_PER_RESULT mots
-        //    depuis la position de départ du résultat vocal
-        const maxAllowed = startIndex + MAX_ADVANCE_PER_RESULT - 1;
-        const cappedIdx  = Math.min(bestIdx, maxAllowed);
-
-        if (cappedIdx !== bestIdx) {
-          console.log(
-            `  ⚠️ saut plafonné : "${heard}" matchait idx ${bestIdx} → limité à ${cappedIdx}`,
-            `(max +${MAX_ADVANCE_PER_RESULT} depuis ${startIndex})`
-          );
-        } else {
-          console.log(`  ✓ "${heard}" ≈ "${words[bestIdx].raw}" (score: ${bestScore.toFixed(2)}, idx ${bestIdx})`);
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
         }
-        advanceTo(cappedIdx);
-      } else if (isFinal) {
-        console.log(`  ✗ "${heard}" (meilleur score: ${bestScore.toFixed(2)})`);
       }
+
+      // Si on a un bon match, on mémorise l'index le plus avancé de ce lot
+      if (bestScore >= fuzzyThreshold && bestIdx >= 0) {
+        bestMatchInBatch = Math.max(bestMatchInBatch, bestIdx);
+      }
+    }
+
+    // On n'avance QU'UNE SEULE FOIS pour tout le lot de mots entendus
+    if (bestMatchInBatch !== -1) {
+      // Sécurité : on ne peut pas sauter plus de MAX_ADVANCE_PER_RESULT d'un coup
+      const cappedIdx = Math.min(bestMatchInBatch, currentIndex + MAX_ADVANCE_PER_RESULT - 1);
+      
+      console.log(`  ✓ Match trouvé (idx ${bestMatchInBatch}). Avancement vers ${cappedIdx}`);
+      advanceTo(cappedIdx);
+    } else if (isFinal) {
+      console.log(`  ✗ Aucun match fiable dans ce lot : [${heardWords.join(', ')}]`);
     }
   }
 
