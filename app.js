@@ -33,8 +33,8 @@
   let fuzzyThreshold = 0.55;
 
   // Configuration du suivi
-  const LOOKAHEAD = 20; // Fenêtre raisonnable pour éviter les faux positifs
-  const MAX_JUMP  = 15; // Sécurité absolue : on ne saute jamais plus de 15 mots
+  const LOOKAHEAD = 15; // Fenêtre serrée pour une précision maximale
+  const MAX_JUMP  = 10; // On ne saute jamais plus d'une ligne d'un coup (sécurité)
 
   // ════════════════════════════════════════════
   // 1. DRAWER
@@ -247,39 +247,42 @@
     const searchStart = Math.max(0, currentIndex - 3);
     const searchEnd   = Math.min(currentIndex + LOOKAHEAD, words.length);
     
-    let bestIdxFound = -1;
+    let targetIdx = -1;
 
-    for (const heard of heardWords) {
+    // On parcourt les mots entendus de la FIN vers le DÉBUT.
+    // Le but est de trouver le mot le plus RECENT et le plus SOLIDE (3+ lettres)
+    // pour caler la position du prompteur.
+    for (let i = heardWords.length - 1; i >= 0; i--) {
+      const heard = heardWords[i];
       if (heard.length < 2) continue;
 
       let wordBestScore = 0;
       let wordBestIdx   = -1;
 
-      for (let i = searchStart; i < searchEnd; i++) {
-        const score = similarity(heard, words[i].normalized);
+      for (let j = searchStart; j < searchEnd; j++) {
+        const score = similarity(heard, words[j].normalized);
         if (score > wordBestScore) {
           wordBestScore = score;
-          wordBestIdx = i;
+          wordBestIdx = j;
         }
       }
 
       if (wordBestScore >= fuzzyThreshold) {
-        // SÉCURITÉ : Un mot court ( < 4 lettres) n'a pas le droit de faire sauter le prompteur 
-        // de plus de 3 mots d'un coup (évite les confusions sur "en", "le", "de", etc.)
-        const jumpDistance = wordBestIdx - currentIndex;
-        if (heard.length < 4 && jumpDistance > 3) {
-          continue; 
+        // Si on trouve un mot de 3 lettres ou plus, c'est notre ancre parfaite.
+        if (heard.length >= 3) {
+          targetIdx = wordBestIdx;
+          break; // On a trouvé notre tête de lecture, on arrête de chercher
         }
-        
-        bestIdxFound = Math.max(bestIdxFound, wordBestIdx);
+        // Sinon (mot de 2 lettres), on le garde comme cible temporaire 
+        // mais on continue de chercher un mot plus solide.
+        if (targetIdx === -1) targetIdx = wordBestIdx;
       }
     }
 
-    if (bestIdxFound !== -1 && bestIdxFound >= currentIndex) {
-      // SÉCURITÉ : On plafonne le saut global
-      const finalIdx = Math.min(bestIdxFound, currentIndex + MAX_JUMP);
-      
-      console.log(`  ✓ Avancement vers ${finalIdx} (demandé: ${bestIdxFound})`);
+    if (targetIdx !== -1 && targetIdx >= currentIndex) {
+      // SÉCURITÉ : Plafond de saut
+      const finalIdx = Math.min(targetIdx, currentIndex + MAX_JUMP);
+      console.log(`  ✓ Ancrage sur "${words[finalIdx].raw}" (index ${finalIdx})`);
       advanceTo(finalIdx);
     }
   }
