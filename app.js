@@ -33,8 +33,8 @@
   let fuzzyThreshold = 0.55;
 
   // Sécurité anti-saut : fenêtre de recherche et plafond d'avance
-  const LOOKAHEAD           = 15;  // on cherche dans les 15 prochains mots max
-  const MAX_WORDS_PER_JUMP  = 7;   // on ne saute jamais plus de 7 mots d'un coup
+  const LOOKAHEAD           = 25;  // Vision plus large pour les débits rapides
+  const MAX_WORDS_PER_JUMP  = 12;  // Permet de rattraper plus de texte d'un coup
 
   // ════════════════════════════════════════════
   // 1. DRAWER
@@ -174,9 +174,9 @@
   function createRecognition() {
     const rec = new SpeechRecognition();
     rec.continuous      = true;
-    rec.interimResults  = false;  // Résultats finaux uniquement — plus stable
+    rec.interimResults  = true; // RÉACTIVÉ : Pour un défilement mot à mot ultra-fluide
     rec.lang            = 'fr-FR';
-    rec.maxAlternatives = 1;
+    rec.maxAlternatives = 3; // Plus d'alternatives pour mieux comprendre les accents
 
     rec.onstart = () => {
       console.log('%c[Prompteo] 🎙️ Écoute démarrée', 'color:#4caf50');
@@ -217,18 +217,22 @@
   // ════════════════════════════════════════════
   function handleResult(event) {
     let transcript = '';
+    let isFinal = false;
+
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) transcript += event.results[i][0].transcript;
+      transcript += event.results[i][0].transcript;
+      if (event.results[i].isFinal) isFinal = true;
     }
+    
     transcript = transcript.trim();
     if (!transcript) return;
 
     debugHeard.textContent = transcript;
-    debugHeard.style.color = '';
+    debugHeard.style.color = isFinal ? '' : 'var(--text-dim)';
 
-    const heardWords = transcript.split(/\s+/).map(normalizeWord).filter(w => w.length > 1);
-    console.log(`%c[SR FINAL]%c "${transcript}" → [${heardWords.join(', ')}]`, 'color:#4caf50;font-weight:bold', 'color:inherit');
-
+    // On ne traite que si on a au moins un mot de 2+ lettres (évite les bruits parasites)
+    const heardWords = transcript.split(/\s+/).map(normalizeWord).filter(w => w.length >= 2);
+    
     if (heardWords.length === 0) return;
     matchPhrase(heardWords);
   }
