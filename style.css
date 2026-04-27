@@ -147,10 +147,10 @@ body {
 ════════════════════════════ */
 .btn-fab {
   position: fixed;
-  bottom: calc(28px + var(--safe-bottom));
+  bottom: calc(30px + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100; /* Passe au premier plan absolu */
+  z-index: 65; /* Par dessus le prompteur et la top-bar, mais sous le drawer */
 
   width: var(--fab-size);
   height: var(--fab-size);
@@ -162,18 +162,14 @@ body {
   cursor: pointer;
 
   display: flex;
-  align-items: center;
-  justify-content: center;
-
-  box-shadow: 0 4px 24px rgba(255,214,0,.35);
-  transition: background .2s, transform .15s, box-shadow .2s;
+  align-items: center; justify-content: center;
+  box-shadow: 0 4px 30px rgba(255,214,0,.4);
+  transition: background .2s, transform .15s, opacity .3s;
 }
 .btn-fab:active   { transform: translateX(-50%) scale(.92); }
 .btn-fab:disabled { 
-  background: var(--accent-dark); 
-  opacity: 0.8; /* Plus visible même si désactivé */
-  cursor: not-allowed; 
-  box-shadow: none;
+  opacity: 1; /* On le laisse bien brillant */
+  cursor: pointer; 
 }
 .btn-fab.listening {
   background: var(--danger);
@@ -282,9 +278,10 @@ body {
   font-family: inherit;
   font-size: .9rem;
   line-height: 1.5;
-  resize: vertical;
+  resize: none;
   outline: none;
   transition: border-color .2s;
+  max-height: 160px; /* Limite la hauteur pour voir les options en dessous */
 }
 .textarea:focus { border-color: var(--accent); }
 
