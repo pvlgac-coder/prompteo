@@ -33,6 +33,11 @@
   let recognition    = null;
   let fuzzyThreshold = 0.55;
 
+  // Sécurité anti-saut : jamais plus de N mots d'avance par résultat vocal
+  const MAX_ADVANCE_PER_RESULT = 6;
+  // Fenêtre de recherche réduite pour éviter les correspondances lointaines
+  const LOOKAHEAD = 12;
+
   // ════════════════════════════════════════════
   // 1. DRAWER (Bottom Sheet)
   // ════════════════════════════════════════════
@@ -261,8 +266,10 @@
   }
 
   function matchHeardWords(heardWords, isFinal) {
-    const LOOKAHEAD = 30;
-    const searchEnd = Math.min(currentIndex + LOOKAHEAD, words.length);
+    const searchEnd  = Math.min(currentIndex + LOOKAHEAD, words.length);
+    // On mémorise l'index de départ AVANT la boucle pour que le plafond
+    // s'applique sur l'ensemble du résultat vocal, pas mot par mot
+    const startIndex = currentIndex;
 
     for (const heard of heardWords) {
       if (heard.length < 2) continue;
@@ -278,8 +285,20 @@
       }
 
       if (bestScore >= fuzzyThreshold && bestIdx >= 0) {
-        console.log(`  ✓ "${heard}" ≈ "${words[bestIdx].raw}" (score: ${bestScore.toFixed(2)})`);
-        advanceTo(bestIdx);
+        // ── PLAFOND : on ne saute jamais plus de MAX_ADVANCE_PER_RESULT mots
+        //    depuis la position de départ du résultat vocal
+        const maxAllowed = startIndex + MAX_ADVANCE_PER_RESULT - 1;
+        const cappedIdx  = Math.min(bestIdx, maxAllowed);
+
+        if (cappedIdx !== bestIdx) {
+          console.log(
+            `  ⚠️ saut plafonné : "${heard}" matchait idx ${bestIdx} → limité à ${cappedIdx}`,
+            `(max +${MAX_ADVANCE_PER_RESULT} depuis ${startIndex})`
+          );
+        } else {
+          console.log(`  ✓ "${heard}" ≈ "${words[bestIdx].raw}" (score: ${bestScore.toFixed(2)}, idx ${bestIdx})`);
+        }
+        advanceTo(cappedIdx);
       } else if (isFinal) {
         console.log(`  ✗ "${heard}" (meilleur score: ${bestScore.toFixed(2)})`);
       }
@@ -395,14 +414,9 @@
     if (e.code === 'Escape') closeDrawer();
   });
 
-  // Sur desktop, ouvrir le drawer au départ si aucun script n'est chargé
-  if (window.innerWidth >= 768) {
-    // Le drawer est toujours visible sur desktop via CSS (transform: none)
-    // Rien de spécial à faire
-  } else {
-    // Mobile : ouvrir le drawer au démarrage si le promptText est vide
-    setTimeout(openDrawer, 400);
-  }
+  // Desktop : drawer = sidebar toujours visible via CSS.
+  // Mobile  : PAS d'ouverture automatique → le FAB est immédiatement visible.
+  //           L'utilisateur tape ⚙️ pour accéder aux réglages.
 
   console.log('%c[Prompteo] 🚀 Prêt', 'color:#ffd600;font-weight:bold;font-size:1.1em');
 })();
