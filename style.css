@@ -150,7 +150,7 @@ body {
   bottom: calc(28px + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
-  z-index: 60;
+  z-index: 100; /* Passe au premier plan absolu */
 
   width: var(--fab-size);
   height: var(--fab-size);
@@ -169,7 +169,12 @@ body {
   transition: background .2s, transform .15s, box-shadow .2s;
 }
 .btn-fab:active   { transform: translateX(-50%) scale(.92); }
-.btn-fab:disabled { opacity: .3; cursor: not-allowed; }
+.btn-fab:disabled { 
+  background: var(--accent-dark); 
+  opacity: 0.8; /* Plus visible même si désactivé */
+  cursor: not-allowed; 
+  box-shadow: none;
+}
 .btn-fab.listening {
   background: var(--danger);
   box-shadow: 0 4px 24px rgba(255,68,68,.4);
@@ -396,13 +401,14 @@ input[type="range"]::-webkit-slider-thumb {
     padding: 18vh 8% 50vh;
   }
 
-  /* FAB devient mini-bouton dans le flux desktop */
+  /* Bouton FAB dans la sidebar sur desktop */
   .btn-fab {
     position: fixed;
-    bottom: 24px;
+    bottom: 40px;
     left: calc(var(--panel-w) / 2);
     transform: translateX(-50%);
-    width: 56px; height: 56px;
+    width: 64px; height: 64px;
+    z-index: 110; /* Par dessus la sidebar */
   }
   .btn-fab:active { transform: translateX(-50%) scale(.92); }
 }
