@@ -22,7 +22,8 @@
       <div id="mic-dot-top" class="mic-dot-top" title="Micro actif"></div>
       <button id="btn-settings" class="btn-icon-round" aria-label="Réglages">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
     </div>
@@ -31,19 +32,26 @@
   <!-- ─── Zone du prompteur ─── -->
   <main id="teleprompter">
     <div id="prompt-text" class="prompt-text">
-      <p class="placeholder-msg">Colle ton script dans les réglages<br>puis clique <strong>Charger</strong></p>
+      <p class="placeholder-msg">Ouvre les ⚙️ réglages, colle ton script<br>puis clique <strong>Charger</strong></p>
     </div>
   </main>
 
-    <svg id="fab-icon-play" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    <svg id="fab-icon-stop" width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+  <!-- ─── Bouton START flottant ─── -->
+  <button id="btn-fab" class="btn-fab" aria-label="Démarrer">
+    <svg id="fab-icon-play" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="5 3 19 12 5 21 5 3"/>
+    </svg>
+    <svg id="fab-icon-stop" width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+      <rect x="6" y="6" width="12" height="12" rx="2"/>
+    </svg>
   </button>
 
   <!-- ─── Overlay (fond sombre quand drawer ouvert) ─── -->
   <div id="drawer-overlay" class="drawer-overlay"></div>
 
-  <!-- ─── Drawer (bottom sheet) ─── -->
+  <!-- ─── Drawer (bottom sheet sur mobile, sidebar sur desktop) ─── -->
   <aside id="drawer" class="drawer" aria-label="Panneau de réglages">
+
     <div class="drawer-handle-zone" id="drawer-handle">
       <div class="drawer-handle"></div>
     </div>
@@ -51,24 +59,28 @@
     <div class="drawer-content">
       <h2 class="drawer-title">Réglages</h2>
 
-      <label for="script-input" class="label">Script :</label>
-      <textarea id="script-input" class="textarea" rows="8" placeholder="Colle ton script ici…"></textarea>
+      <div class="form-group">
+        <label for="script-input" class="label">Script :</label>
+        <textarea id="script-input" class="textarea" rows="6" placeholder="Colle ton script ici…"></textarea>
+        <button id="btn-load" class="btn btn-full btn-secondary">⬆ Charger le script</button>
+      </div>
 
-      <button id="btn-load" class="btn btn-full btn-secondary">Charger le script</button>
-      <button id="btn-reset" class="btn btn-full btn-danger" disabled>⟲ Recommencer</button>
+      <div class="form-group">
+        <button id="btn-reset" class="btn btn-full btn-danger" disabled>⟲ Recommencer depuis le début</button>
+      </div>
 
       <div class="slider-group">
-        <label for="font-slider" class="label">Taille du texte : <span id="font-size-value">2.5</span>rem</label>
+        <label for="font-slider" class="label">Taille du texte : <span id="font-size-value">2.5</span> rem</label>
         <input type="range" id="font-slider" min="1.5" max="6" step="0.25" value="2.5">
       </div>
 
       <div class="slider-group">
-        <label for="tolerance-slider" class="label">Tolérance fuzzy : <span id="tolerance-value">0.55</span></label>
+        <label for="tolerance-slider" class="label">Tolérance vocale : <span id="tolerance-value">0.55</span></label>
         <input type="range" id="tolerance-slider" min="0.3" max="0.9" step="0.05" value="0.55">
       </div>
 
-      <div id="debug-bar" class="debug-bar">
-        <span class="debug-label">API entend :</span>
+      <div class="debug-bar">
+        <span class="debug-label">API entend : </span>
         <span id="debug-heard" class="debug-text">—</span>
       </div>
     </div>

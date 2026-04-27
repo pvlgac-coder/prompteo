@@ -1,101 +1,84 @@
 /* ═══════════════════════════════════════════════════════
    Prompteo — Application principale
    Prompteur à reconnaissance vocale (Web Speech API)
-   Mobile-First
    ═══════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
   // ─── DOM refs ───
-  const drawer         = document.getElementById('drawer');
-  const drawerOverlay  = document.getElementById('drawer-overlay');
-  const drawerHandle   = document.getElementById('drawer-handle');
-  const btnSettings    = document.getElementById('btn-settings');
-  const scriptInput    = document.getElementById('script-input');
-  const btnLoad        = document.getElementById('btn-load');
-  const btnReset       = document.getElementById('btn-reset');
-  const btnFab         = document.getElementById('btn-fab');
-  const fabIconPlay    = document.getElementById('fab-icon-play');
-  const fabIconStop    = document.getElementById('fab-icon-stop');
-  const fontSlider     = document.getElementById('font-slider');
-  const fontSizeValue  = document.getElementById('font-size-value');
-  const tolSlider      = document.getElementById('tolerance-slider');
-  const tolValue       = document.getElementById('tolerance-value');
-  const promptText     = document.getElementById('prompt-text');
-  const debugHeard     = document.getElementById('debug-heard');
-  const micDotTop      = document.getElementById('mic-dot-top');
+  const drawer        = document.getElementById('drawer');
+  const drawerOverlay = document.getElementById('drawer-overlay');
+  const drawerHandle  = document.getElementById('drawer-handle');
+  const btnSettings   = document.getElementById('btn-settings');
+  const scriptInput   = document.getElementById('script-input');
+  const btnLoad       = document.getElementById('btn-load');
+  const btnReset      = document.getElementById('btn-reset');
+  const btnFab        = document.getElementById('btn-fab');
+  const fabIconPlay   = document.getElementById('fab-icon-play');
+  const fabIconStop   = document.getElementById('fab-icon-stop');
+  const fontSlider    = document.getElementById('font-slider');
+  const fontSizeValue = document.getElementById('font-size-value');
+  const tolSlider     = document.getElementById('tolerance-slider');
+  const tolValue      = document.getElementById('tolerance-value');
+  const promptText    = document.getElementById('prompt-text');
+  const debugHeard    = document.getElementById('debug-heard');
+  const micDotTop     = document.getElementById('mic-dot-top');
 
   // ─── State ───
-  let words          = [];
+  let words          = [];   // { el, raw, normalized }
   let currentIndex   = 0;
   let isListening    = false;
   let recognition    = null;
   let fuzzyThreshold = 0.55;
 
-  // Sécurité anti-saut : jamais plus de N mots d'avance par résultat vocal
-  const MAX_ADVANCE_PER_RESULT = 6;
-  // Fenêtre de recherche réduite pour éviter les correspondances lointaines
-  const LOOKAHEAD = 12;
+  // Sécurité anti-saut : fenêtre de recherche et plafond d'avance
+  const LOOKAHEAD           = 15;  // on cherche dans les 15 prochains mots max
+  const MAX_WORDS_PER_JUMP  = 7;   // on ne saute jamais plus de 7 mots d'un coup
 
   // ════════════════════════════════════════════
-  // 1. DRAWER (Bottom Sheet)
+  // 1. DRAWER
   // ════════════════════════════════════════════
   function openDrawer() {
     drawer.classList.add('open');
     drawerOverlay.classList.add('visible');
     document.body.style.overflow = 'hidden';
   }
-
   function closeDrawer() {
     drawer.classList.remove('open');
     drawerOverlay.classList.remove('visible');
     document.body.style.overflow = '';
   }
 
-  btnSettings.addEventListener('click', openDrawer);
+  if (btnSettings) btnSettings.addEventListener('click', openDrawer);
   drawerOverlay.addEventListener('click', closeDrawer);
 
-  // ─── Drag to close (swipe down) ───
-  let dragStartY = 0;
-  let dragCurrentY = 0;
-  let isDragging = false;
+  // ─── Swipe-down pour fermer ───
+  let dragY0 = 0, dragY = 0, dragging = false;
 
-  function onDragStart(e) {
-    isDragging = true;
-    dragStartY = e.touches ? e.touches[0].clientY : e.clientY;
-    dragCurrentY = dragStartY;
+  drawerHandle.addEventListener('touchstart', e => {
+    dragging = true;
+    dragY0 = dragY = e.touches[0].clientY;
     drawer.style.transition = 'none';
-  }
+  }, { passive: true });
 
-  function onDragMove(e) {
-    if (!isDragging) return;
-    dragCurrentY = e.touches ? e.touches[0].clientY : e.clientY;
-    const delta = dragCurrentY - dragStartY;
-    if (delta > 0) {
-      drawer.style.transform = `translateY(${delta}px)`;
-    }
-  }
+  drawerHandle.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    dragY = e.touches[0].clientY;
+    const d = dragY - dragY0;
+    if (d > 0) drawer.style.transform = `translateY(${d}px)`;
+  }, { passive: true });
 
-  function onDragEnd() {
-    if (!isDragging) return;
-    isDragging = false;
+  drawerHandle.addEventListener('touchend', () => {
+    dragging = false;
     drawer.style.transition = '';
-    const delta = dragCurrentY - dragStartY;
-    if (delta > 100) {
+    if (dragY - dragY0 > 90) {
       drawer.style.transform = '';
       closeDrawer();
     } else {
       drawer.style.transform = '';
     }
-  }
-
-  drawerHandle.addEventListener('touchstart', onDragStart, { passive: true });
-  drawerHandle.addEventListener('touchmove', onDragMove, { passive: true });
-  drawerHandle.addEventListener('touchend', onDragEnd);
-  drawerHandle.addEventListener('mousedown', onDragStart);
-  window.addEventListener('mousemove', onDragMove);
-  window.addEventListener('mouseup', onDragEnd);
+  });
 
   // ════════════════════════════════════════════
   // 2. CHARGEMENT DU SCRIPT
@@ -110,8 +93,8 @@
   function normalizeWord(w) {
     return w
       .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]/g, '');
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // retire accents
+      .replace(/[^a-z0-9]/g, '');                       // garde alphanum
   }
 
   function loadScript(text) {
@@ -119,24 +102,17 @@
     words = [];
     currentIndex = 0;
 
+    // Découpe en phrases
     const sentences = text.split(/(?<=[.!?…;:\n])\s*/);
 
     sentences.forEach((sentence, si) => {
       if (!sentence.trim()) return;
-
-      const tokenList = sentence.trim().split(/\s+/);
-      tokenList.forEach((token) => {
+      sentence.trim().split(/\s+/).forEach(token => {
         const span = document.createElement('span');
         span.className = 'word upcoming';
         span.textContent = token + ' ';
-        span.dataset.index = words.length;
         promptText.appendChild(span);
-
-        words.push({
-          el: span,
-          raw: token,
-          normalized: normalizeWord(token),
-        });
+        words.push({ el: span, raw: token, normalized: normalizeWord(token) });
       });
 
       if (si < sentences.length - 1) {
@@ -147,7 +123,6 @@
     });
 
     console.log(`%c[Prompteo] Script chargé — ${words.length} mots`, 'color:#ffd600;font-weight:bold');
-    btnFab.disabled = false;
     btnReset.disabled = false;
     window.scrollTo({ top: 0 });
   }
@@ -160,7 +135,6 @@
     fontSizeValue.textContent = v;
     document.documentElement.style.setProperty('--font-size', v + 'rem');
   });
-
   tolSlider.addEventListener('input', () => {
     fuzzyThreshold = parseFloat(tolSlider.value);
     tolValue.textContent = fuzzyThreshold.toFixed(2);
@@ -170,63 +144,50 @@
   // 4. RECONNAISSANCE VOCALE
   // ════════════════════════════════════════════
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
   if (!SpeechRecognition) {
-    alert('Ton navigateur ne supporte pas la Web Speech API.\nUtilise Chrome sur Android ou Chrome sur desktop.');
+    alert('Ton navigateur ne supporte pas la Web Speech API.\nUtilise Google Chrome.');
   }
 
-  function setMicActive(active) {
+  function setMicState(active) {
     micDotTop.classList.toggle('active', active);
     btnFab.classList.toggle('listening', active);
-    fabIconPlay.style.display = active ? 'none' : 'block';
+    fabIconPlay.style.display = active ? 'none'  : 'block';
     fabIconStop.style.display = active ? 'block' : 'none';
   }
 
   function createRecognition() {
     const rec = new SpeechRecognition();
     rec.continuous      = true;
-    rec.interimResults  = false; // Désactivé pour éviter les doubles matches et les sauts brusques
+    rec.interimResults  = false;  // Résultats finaux uniquement — plus stable
     rec.lang            = 'fr-FR';
     rec.maxAlternatives = 1;
 
     rec.onstart = () => {
       console.log('%c[Prompteo] 🎙️ Écoute démarrée', 'color:#4caf50');
-      setMicActive(true);
-      debugHeard.textContent = 'Écoute active... Parlez maintenant.';
+      setMicState(true);
+      debugHeard.textContent = 'En écoute…';
       debugHeard.style.color = 'var(--accent)';
     };
 
-    rec.onsoundstart  = () => console.log('%c[Prompteo] 🔊 Son détecté',   'color:#ffd600');
-    rec.onspeechstart = () => console.log('%c[Prompteo] 🗣️ Parole...',     'color:#ffd600');
+    rec.onsoundstart  = () => console.log('%c[Prompteo] 🔊 Son',    'color:#888');
+    rec.onspeechstart = () => console.log('%c[Prompteo] 🗣️ Parole', 'color:#888');
 
     rec.onend = () => {
-      console.log('%c[Prompteo] 🎙️ Écoute stoppée', 'color:#ff4444');
-      setMicActive(false);
-
-      if (window.location.protocol === 'file:') {
-        stopListening();
-        return;
-      }
-      if (isListening) {
-        console.log('%c[Prompteo] ↻ Redémarrage auto…', 'color:#ffd600');
+      console.log('%c[Prompteo] 🎙️ Fin de session', 'color:#ff4444');
+      setMicState(false);
+      // Auto-restart (Chrome coupe à ~60s)
+      if (isListening && window.location.protocol !== 'file:') {
+        console.log('%c[Prompteo] ↻ Redémarrage…', 'color:#ffd600');
         try { recognition.start(); } catch (_) {}
       }
     };
 
-    rec.onerror = (e) => {
-      console.warn('[Prompteo] Erreur SR:', e.error, e);
+    rec.onerror = e => {
+      console.warn('[Prompteo] Erreur SR:', e.error);
       debugHeard.textContent = `Erreur : ${e.error}`;
       debugHeard.style.color = 'var(--danger)';
-
-      if (e.error === 'network') {
-        alert('Erreur réseau. La reconnaissance vocale nécessite une connexion internet active.');
-      }
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        let msg = 'Accès au micro refusé.';
-        if (navigator.userAgent.toLowerCase().includes('brave')) {
-          msg += '\n\nSur Brave : activez "Utiliser les services Google pour la reconnaissance vocale" dans brave://settings/privacy';
-        }
-        alert(msg);
+        alert('Accès au micro refusé. Autorise le micro dans les réglages du navigateur.');
         stopListening();
       }
     };
@@ -239,107 +200,111 @@
   // 5. TRAITEMENT DES RÉSULTATS
   // ════════════════════════════════════════════
   function handleResult(event) {
-    console.log(`[Prompteo] onresult (${event.results.length} résultats)`);
     let transcript = '';
-    let isFinal = false;
-
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript;
-      if (event.results[i].isFinal) isFinal = true;
+      if (event.results[i].isFinal) transcript += event.results[i][0].transcript;
     }
-
     transcript = transcript.trim();
     if (!transcript) return;
 
     debugHeard.textContent = transcript;
     debugHeard.style.color = '';
 
-    const heardWords = transcript.split(/\s+/).map(normalizeWord).filter(w => w.length > 0);
-
-    console.log(
-      `%c[SR ${isFinal ? 'FINAL' : 'interim'}]%c "${transcript}" → [${heardWords.join(', ')}]`,
-      isFinal ? 'color:#4caf50;font-weight:bold' : 'color:#888', 'color:inherit'
-    );
+    const heardWords = transcript.split(/\s+/).map(normalizeWord).filter(w => w.length > 1);
+    console.log(`%c[SR FINAL]%c "${transcript}" → [${heardWords.join(', ')}]`, 'color:#4caf50;font-weight:bold', 'color:inherit');
 
     if (heardWords.length === 0) return;
-    matchHeardWords(heardWords, isFinal);
-  }
-
-  function matchHeardWords(heardWords, isFinal) {
-    const searchEnd = Math.min(currentIndex + LOOKAHEAD, words.length);
-    let bestMatchInBatch = -1;
-
-    for (const heard of heardWords) {
-      if (heard.length < 2) continue;
-
-      let bestScore = 0;
-      let bestIdx   = -1;
-
-      // On cherche dans la fenêtre
-      for (let i = currentIndex; i < searchEnd; i++) {
-        const scriptWord = words[i].normalized;
-        const score = similarity(heard, scriptWord);
-        if (score > bestScore) {
-          bestScore = score;
-          bestIdx = i;
-        }
-      }
-
-      // Si on a un bon match, on mémorise l'index le plus avancé de ce lot
-      if (bestScore >= fuzzyThreshold && bestIdx >= 0) {
-        bestMatchInBatch = Math.max(bestMatchInBatch, bestIdx);
-      }
-    }
-
-    // On n'avance QU'UNE SEULE FOIS pour tout le lot de mots entendus
-    if (bestMatchInBatch !== -1) {
-      // Sécurité : on ne peut pas sauter plus de MAX_ADVANCE_PER_RESULT d'un coup
-      const cappedIdx = Math.min(bestMatchInBatch, currentIndex + MAX_ADVANCE_PER_RESULT - 1);
-      
-      console.log(`  ✓ Match trouvé (idx ${bestMatchInBatch}). Avancement vers ${cappedIdx}`);
-      advanceTo(cappedIdx);
-    } else if (isFinal) {
-      console.log(`  ✗ Aucun match fiable dans ce lot : [${heardWords.join(', ')}]`);
-    }
+    matchPhrase(heardWords);
   }
 
   // ════════════════════════════════════════════
-  // 6. AVANCEMENT ET SCROLL
+  // 6. MATCHING — Ancrage + Avance contrôlée
+  // ════════════════════════════════════════════
+  /*
+   * Stratégie :
+   * 1. On cherche le mot "ancre" — le premier mot substantiel entendu (≥3 chars)
+   *    dans la fenêtre LOOKAHEAD depuis currentIndex.
+   * 2. Une fois l'ancre positionnée, on avance de (position_ancre - position_ancre_dans_phrase)
+   *    + nombre_de_mots_entendus — ce qui correspond à "la fin de la phrase prononcée".
+   * 3. Le plafond MAX_WORDS_PER_JUMP empêche tout saut brutal.
+   */
+  function matchPhrase(heardWords) {
+    const searchEnd = Math.min(currentIndex + LOOKAHEAD, words.length);
+
+    // Trouver le mot ancre (premier mot de longueur ≥ 3)
+    const anchorHeard = heardWords.find(w => w.length >= 3) || heardWords[0];
+    const anchorPosInPhrase = heardWords.indexOf(anchorHeard);
+
+    let bestScore = 0;
+    let anchorIdx = -1;
+
+    for (let i = currentIndex; i < searchEnd; i++) {
+      const s = similarity(anchorHeard, words[i].normalized);
+      if (s > bestScore) { bestScore = s; anchorIdx = i; }
+    }
+
+    if (bestScore < fuzzyThreshold || anchorIdx < 0) {
+      console.log(`  ✗ Aucun ancrage pour "${anchorHeard}" (meilleur score: ${bestScore.toFixed(2)})`);
+      return;
+    }
+
+    // Position cible = fin de la phrase prononcée dans le script
+    // anchorIdx est où dans le script on a trouvé l'ancre.
+    // On remonte de anchorPosInPhrase pour trouver le début,
+    // puis on avance de (heardWords.length - 1) pour trouver la fin.
+    const phraseStart  = Math.max(currentIndex, anchorIdx - anchorPosInPhrase);
+    const phraseEnd    = phraseStart + heardWords.length - 1;
+
+    // Sécurité : plafond d'avance
+    const targetIdx = Math.min(
+      phraseEnd,
+      currentIndex + MAX_WORDS_PER_JUMP - 1,
+      words.length - 1
+    );
+
+    console.log(
+      `  ✓ Ancrage "${anchorHeard}" → script[${anchorIdx}]="${words[anchorIdx].raw}" (${bestScore.toFixed(2)})`
+      + ` | phrase [${phraseStart}→${phraseEnd}] → cible plafonnée : ${targetIdx}`
+    );
+
+    advanceTo(targetIdx);
+  }
+
+  // ════════════════════════════════════════════
+  // 7. AVANCEMENT ET SCROLL
   // ════════════════════════════════════════════
   function advanceTo(idx) {
+    if (idx < currentIndex) return; // ne jamais reculer
+
     for (let i = currentIndex; i <= idx; i++) {
       words[i].el.classList.remove('upcoming', 'active');
       words[i].el.classList.add('spoken');
     }
-
     currentIndex = idx + 1;
 
     if (currentIndex < words.length) {
       words[currentIndex].el.classList.remove('upcoming');
       words[currentIndex].el.classList.add('active');
       scrollToWord(currentIndex);
-    }
-
-    if (currentIndex >= words.length) {
+    } else {
       console.log('%c[Prompteo] ✅ Script terminé !', 'color:#4caf50;font-weight:bold');
       stopListening();
     }
   }
 
   function scrollToWord(idx) {
-    const el = words[idx].el;
+    const el  = words[idx].el;
     const rect = el.getBoundingClientRect();
-    const targetY = window.scrollY + rect.top - window.innerHeight * 0.2;
+    const targetY = window.scrollY + rect.top - window.innerHeight * 0.20;
     window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
   }
 
   // ════════════════════════════════════════════
-  // 7. FUZZY MATCHING
+  // 8. FUZZY — Levenshtein normalisé
   // ════════════════════════════════════════════
   function levenshtein(a, b) {
     const m = a.length, n = b.length;
-    const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...new Array(n).fill(0)]);
     for (let j = 0; j <= n; j++) dp[0][j] = j;
     for (let i = 1; i <= m; i++) {
       for (let j = 1; j <= n; j++) {
@@ -354,39 +319,42 @@
   function similarity(a, b) {
     if (a === b) return 1;
     const maxLen = Math.max(a.length, b.length);
-    if (maxLen === 0) return 1;
-    return 1 - levenshtein(a, b) / maxLen;
+    return maxLen === 0 ? 1 : 1 - levenshtein(a, b) / maxLen;
   }
 
   // ════════════════════════════════════════════
-  // 8. START / STOP (FAB)
+  // 9. START / STOP
   // ════════════════════════════════════════════
   btnFab.addEventListener('click', () => {
+    if (words.length === 0) {
+      // Pas de script : ouvrir les réglages
+      openDrawer();
+      return;
+    }
     if (isListening) stopListening();
     else startListening();
   });
 
   function startListening() {
-    if (words.length === 0) return;
-
     recognition = createRecognition();
     isListening = true;
     recognition.start();
-
+    // Met le premier mot en surbrillance
     if (currentIndex < words.length) {
       words[currentIndex].el.classList.remove('upcoming');
       words[currentIndex].el.classList.add('active');
+      scrollToWord(currentIndex);
     }
   }
 
   function stopListening() {
     isListening = false;
     if (recognition) { recognition.abort(); recognition = null; }
-    setMicActive(false);
+    setMicState(false);
   }
 
   // ════════════════════════════════════════════
-  // 9. RESET
+  // 10. RESET
   // ════════════════════════════════════════════
   btnReset.addEventListener('click', () => {
     stopListening();
@@ -402,9 +370,9 @@
   });
 
   // ════════════════════════════════════════════
-  // 10. RACCOURCIS CLAVIER (desktop)
+  // 11. RACCOURCIS CLAVIER (Desktop)
   // ════════════════════════════════════════════
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', e => {
     if (e.code === 'Space' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
       e.preventDefault();
       btnFab.click();
@@ -412,9 +380,5 @@
     if (e.code === 'Escape') closeDrawer();
   });
 
-  // Desktop : drawer = sidebar toujours visible via CSS.
-  // Mobile  : PAS d'ouverture automatique → le FAB est immédiatement visible.
-  //           L'utilisateur tape ⚙️ pour accéder aux réglages.
-
-  console.log('%c[Prompteo] 🚀 Prêt', 'color:#ffd600;font-weight:bold;font-size:1.1em');
+  console.log('%c[Prompteo] 🚀 Prêt. Appuie sur ⚙️ pour coller ton script.', 'color:#ffd600;font-weight:bold');
 })();

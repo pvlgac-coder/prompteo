@@ -5,22 +5,22 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:             #000000;
-  --surface:        #0f0f0f;
-  --surface2:       #1a1a1a;
-  --border:         #222222;
-  --text:           #efefef;
-  --text-dim:       #555555;
-  --accent:         #ffd600;
-  --accent-dark:    #b39800;
-  --danger:         #ff4444;
-  --radius:         12px;
-  --radius-sm:      8px;
-  --font-size:      2.5rem;   /* mobile default */
-  --top-bar-h:      52px;
-  --fab-size:       72px;
-  --drawer-h:       85vh;
-  --safe-bottom:    env(safe-area-inset-bottom, 0px);
+  --bg:           #000000;
+  --surface:      #0f0f0f;
+  --surface2:     #1c1c1c;
+  --border:       #282828;
+  --text:         #efefef;
+  --text-dim:     #505050;
+  --accent:       #ffd600;
+  --danger:       #ff4444;
+  --radius:       12px;
+  --radius-sm:    8px;
+  --font-size:    2.5rem;
+  --top-bar-h:    54px;
+  --fab-size:     72px;
+  --safe-bottom:  env(safe-area-inset-bottom, 0px);
+  /* Desktop sidebar */
+  --panel-w:      320px;
 }
 
 html { scroll-behavior: smooth; }
@@ -32,12 +32,11 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
-  overscroll-behavior: none;
 }
 
-/* ════════════════════════════
+/* ══════════════════════════════
    TOP BAR
-════════════════════════════ */
+══════════════════════════════ */
 #top-bar {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -46,12 +45,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  z-index: 50;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, transparent 100%);
-  pointer-events: none; /* passe-travers sauf pour les éléments enfants */
+  z-index: 40;
+  background: linear-gradient(to bottom, rgba(0,0,0,.95) 60%, transparent);
 }
-
-#top-bar > * { pointer-events: auto; }
 
 .logo {
   font-size: 1rem;
@@ -66,54 +62,47 @@ body {
   gap: 12px;
 }
 
-/* Point micro dans la top bar */
 .mic-dot-top {
   width: 10px; height: 10px;
   border-radius: 50%;
   background: var(--danger);
   opacity: 0;
   transition: opacity .3s;
-  flex-shrink: 0;
 }
 .mic-dot-top.active {
   opacity: 1;
-  animation: pulse 1.2s ease-in-out infinite;
+  animation: dot-pulse 1.4s ease-in-out infinite;
 }
 
-/* Bouton icône rond */
 .btn-icon-round {
-  background: rgba(255,255,255,.08);
+  background: rgba(255,255,255,.07);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 50%;
-  width: 38px; height: 38px;
+  width: 40px; height: 40px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  transition: background .2s, color .2s;
+  transition: background .2s, border-color .2s;
   flex-shrink: 0;
 }
-.btn-icon-round:hover,
-.btn-icon-round:focus { background: rgba(255,214,0,.15); color: var(--accent); outline: none; }
+.btn-icon-round:hover { background: rgba(255,214,0,.12); border-color: var(--accent); }
 
-/* ════════════════════════════
-   TELEPROMPTER
-════════════════════════════ */
+/* ══════════════════════════════
+   TÉLÉPROMPTER
+══════════════════════════════ */
 #teleprompter {
   min-height: 100vh;
   min-height: 100dvh;
-  padding: var(--top-bar-h) 6% calc(var(--fab-size) + 60px + var(--safe-bottom)) 6%;
-  /* on laisse de la place pour le FAB en bas */
-}
-
-/* Décalage vers le haut pour aligner le texte lu près de la webcam */
-#teleprompter {
-  padding-top: calc(var(--top-bar-h) + 12vh);
+  padding-top: calc(var(--top-bar-h) + 14vh);
+  padding-left: 7%;
+  padding-right: 7%;
+  padding-bottom: calc(var(--fab-size) + 80px + var(--safe-bottom));
 }
 
 .prompt-text {
   font-size: var(--font-size);
   font-weight: 700;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--text);
 }
 
@@ -121,79 +110,70 @@ body {
   font-size: 1.1rem;
   font-weight: 400;
   color: var(--text-dim);
-  line-height: 1.8;
+  line-height: 1.9;
   text-align: center;
-  margin-top: 30vh;
+  margin-top: 20vh;
 }
 
-/* ─── Mots ─── */
-.word {
-  display: inline;
-  border-radius: 4px;
-  padding: 0 2px;
-  transition: color .15s, background .15s;
-}
+/* Mots */
+.word         { display: inline; border-radius: 4px; padding: 0 2px; transition: color .15s, background .15s; }
 .word.upcoming { color: var(--text); }
 .word.spoken   { color: var(--text-dim); }
 .word.active   { color: #000; background: var(--accent); }
 
-.sentence-break {
-  display: block;
-  height: .55em;
-}
+.sentence-break { display: block; height: .55em; }
 
-/* ════════════════════════════
-   FAB — Bouton Start / Stop
-════════════════════════════ */
+/* ══════════════════════════════
+   FAB — Bouton Start/Stop
+══════════════════════════════ */
 .btn-fab {
   position: fixed;
-  bottom: calc(30px + var(--safe-bottom));
+  bottom: calc(28px + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
-  z-index: 65; /* Par dessus le prompteur et la top-bar, mais sous le drawer */
+  z-index: 50; /* Au-dessus du prompteur, en-dessous du drawer */
 
   width: var(--fab-size);
   height: var(--fab-size);
   border-radius: 50%;
   border: none;
-
   background: var(--accent);
   color: #000;
   cursor: pointer;
 
   display: flex;
-  align-items: center; justify-content: center;
-  box-shadow: 0 4px 30px rgba(255,214,0,.4);
-  transition: background .2s, transform .15s, opacity .3s;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: 0 6px 32px rgba(255, 214, 0, .45);
+  transition: background .2s, transform .15s, box-shadow .2s;
 }
-.btn-fab:active   { transform: translateX(-50%) scale(.92); }
-.btn-fab:disabled { 
-  opacity: 1; /* On le laisse bien brillant */
-  cursor: pointer; 
-}
+.btn-fab:active { transform: translateX(-50%) scale(.91); }
+
+/* État "en écoute" : rouge pulsant */
 .btn-fab.listening {
   background: var(--danger);
-  box-shadow: 0 4px 24px rgba(255,68,68,.4);
+  box-shadow: 0 6px 32px rgba(255, 68, 68, .45);
   animation: fab-pulse 2s ease-in-out infinite;
 }
 
 @keyframes fab-pulse {
-  0%, 100% { box-shadow: 0 4px 24px rgba(255,68,68,.4); }
-  50%       { box-shadow: 0 4px 40px rgba(255,68,68,.7); }
+  0%, 100% { box-shadow: 0 6px 32px rgba(255,68,68,.45); }
+  50%       { box-shadow: 0 6px 48px rgba(255,68,68,.8); }
 }
 
-/* ════════════════════════════
-   DRAWER — Bottom sheet
-════════════════════════════ */
+/* ══════════════════════════════
+   DRAWER — Bottom Sheet
+══════════════════════════════ */
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.6);
-  z-index: 70;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+  z-index: 60;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .3s ease;
-  backdrop-filter: blur(2px);
+  transition: opacity .3s;
 }
 .drawer-overlay.visible {
   opacity: 1;
@@ -203,69 +183,68 @@ body {
 .drawer {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  z-index: 80;
-  max-height: var(--drawer-h);
+  z-index: 70; /* Au-dessus de l'overlay */
+  max-height: 88vh;
+  max-height: 88dvh;
   background: var(--surface);
+  border-top: 1px solid var(--border);
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
-  border-top: 1px solid var(--border);
-
   display: flex;
   flex-direction: column;
-
   transform: translateY(100%);
   transition: transform .35s cubic-bezier(.32,0,.67,0);
   will-change: transform;
-  touch-action: none;
 }
 .drawer.open {
   transform: translateY(0);
-  transition: transform .35s cubic-bezier(.33,1,.68,1);
+  transition-timing-function: cubic-bezier(.33,1,.68,1);
 }
 
-/* Poignée de drag */
+/* Poignée drag */
 .drawer-handle-zone {
-  padding: 12px;
+  padding: 12px 0 4px;
   display: flex;
   justify-content: center;
   cursor: grab;
   flex-shrink: 0;
+  user-select: none;
 }
-.drawer-handle-zone:active { cursor: grabbing; }
 .drawer-handle {
-  width: 40px; height: 4px;
+  width: 44px; height: 4px;
   border-radius: 2px;
   background: var(--border);
 }
 
-/* Corps du drawer */
+/* Contenu scrollable */
 .drawer-content {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 0 20px calc(20px + var(--safe-bottom));
+  padding: 8px 20px calc(24px + var(--safe-bottom));
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .drawer-title {
-  font-size: 1rem;
+  font-size: .95rem;
   font-weight: 700;
   color: var(--accent);
-  letter-spacing: .04em;
-  margin-bottom: 2px;
+  letter-spacing: .05em;
 }
 
-/* ════════════════════════════
-   ÉLÉMENTS DE FORMULAIRE
-════════════════════════════ */
+/* ══════════════════════════════
+   FORMULAIRE
+══════════════════════════════ */
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+
 .label {
-  font-size: .75rem;
+  font-size: .72rem;
   font-weight: 700;
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: .07em;
+  letter-spacing: .08em;
 }
 
 .textarea {
@@ -281,7 +260,8 @@ body {
   resize: none;
   outline: none;
   transition: border-color .2s;
-  max-height: 160px; /* Limite la hauteur pour voir les options en dessous */
+  /* Hauteur fixe : laisse la place aux autres options */
+  height: 140px;
 }
 .textarea:focus { border-color: var(--accent); }
 
@@ -296,7 +276,7 @@ body {
   transition: opacity .2s, transform .1s;
 }
 .btn:active { transform: scale(.97); }
-.btn:disabled { opacity: .3; cursor: not-allowed; }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
 
 .btn-full      { width: 100%; }
 .btn-secondary { background: var(--surface2); color: var(--text); }
@@ -312,59 +292,59 @@ input[type="range"] {
   background: var(--surface2);
   border-radius: 2px;
   outline: none;
+  cursor: pointer;
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 22px; height: 22px;
+  width: 24px; height: 24px;
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,.4);
 }
 
-/* ════════════════════════════
-   DEBUG BAR
-════════════════════════════ */
 .debug-bar {
   padding: 10px 12px;
-  background: rgba(255,214,0,.06);
+  background: rgba(255,214,0,.05);
+  border: 1px solid rgba(255,214,0,.1);
   border-radius: var(--radius-sm);
-  font-size: .8rem;
+  font-size: .78rem;
   line-height: 1.5;
-  color: var(--text-dim);
   word-break: break-word;
-  margin-top: 4px;
 }
 .debug-label { color: var(--accent); font-weight: 700; }
 .debug-text  { color: var(--text); }
 
-/* ════════════════════════════
+/* ══════════════════════════════
    ANIMATIONS
-════════════════════════════ */
-@keyframes pulse {
+══════════════════════════════ */
+@keyframes dot-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,.6); }
-  50%       { box-shadow: 0 0 0 8px rgba(255,68,68,0); }
+  50%       { box-shadow: 0 0 0 7px rgba(255,68,68,0); }
 }
 
-/* ════════════════════════════
-   DESKTOP (≥ 768px) — sidebar
-════════════════════════════ */
+/* ══════════════════════════════
+   DESKTOP ≥ 768px — Sidebar
+══════════════════════════════ */
 @media (min-width: 768px) {
   :root {
     --font-size: 4rem;
-    --panel-w: 320px;
   }
 
-  /* Top bar devient transparent + décor */
+  /* Top bar : uniquement visible sur la partie droite */
   #top-bar {
-    width: var(--panel-w);
-    left: 0;
+    left: var(--panel-w);
     background: transparent;
-    padding: 20px 20px 0;
+    pointer-events: none;
   }
+  #top-bar > * { pointer-events: auto; }
 
-  /* Sidebar fixe à gauche */
-  #drawer {
+  /* Cacher le bouton ⚙️ (drawer s'ouvre via la sidebar permanente) */
+  #btn-settings { display: none; }
+
+  /* Drawer = sidebar permanente à gauche */
+  .drawer-overlay { display: none !important; }
+
+  .drawer {
     position: fixed;
     top: 0; left: 0;
     width: var(--panel-w);
@@ -373,39 +353,33 @@ input[type="range"]::-webkit-slider-thumb {
     border-radius: 0;
     border-top: none;
     border-right: 1px solid var(--border);
-    transform: none !important;  /* toujours visible sur desktop */
-    transition: none;
+    /* Toujours visible — on annule le transform */
+    transform: none !important;
+    transition: none !important;
+    z-index: 30;
   }
 
-  /* Cache poignée et overlay sur desktop */
   .drawer-handle-zone { display: none; }
-  .drawer-overlay     { display: none !important; }
 
-  /* Contenu du drawer = sidebar */
   .drawer-content {
-    padding: 80px 20px 20px;
+    padding: 24px 20px 24px;
+    overflow-y: auto;
   }
 
-  /* Bouton réglages inutile sur desktop */
-  #btn-settings { display: none; }
-
-  /* Logo sur la sidebar */
-  #top-bar .logo { display: none; }
-
-  /* Teleprompter décalé à droite */
+  /* Téléprompter décalé à droite */
   #teleprompter {
     margin-left: var(--panel-w);
-    padding: 18vh 8% 50vh;
+    padding-left: 8%;
+    padding-right: 8%;
   }
 
-  /* Bouton FAB dans la sidebar sur desktop */
+  /* FAB centré sous la sidebar */
   .btn-fab {
-    position: fixed;
-    bottom: 40px;
     left: calc(var(--panel-w) / 2);
-    transform: translateX(-50%);
-    width: 64px; height: 64px;
-    z-index: 110; /* Par dessus la sidebar */
+    bottom: 32px;
+    width: 60px;
+    height: 60px;
+    z-index: 35; /* Au-dessus de la sidebar */
   }
-  .btn-fab:active { transform: translateX(-50%) scale(.92); }
+  .btn-fab:active { transform: translateX(-50%) scale(.91); }
 }
