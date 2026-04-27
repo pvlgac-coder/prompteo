@@ -2,40 +2,66 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="theme-color" content="#000000">
   <meta name="description" content="Prompteo — Prompteur à reconnaissance vocale pour tournage vidéo.">
   <title>Prompteo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- ─── Panneau de contrôle ─── -->
-  <aside id="control-panel" class="panel-visible">
-
-    <header class="panel-header">
-      <h1 class="panel-title">Prompteo</h1>
-      <button id="btn-toggle-panel" class="btn-icon" aria-label="Masquer le panneau" title="Masquer / Afficher le panneau">
-        <svg id="icon-collapse" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        <svg id="icon-expand" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polyline points="9 18 15 12 9 6"/></svg>
+  <!-- ─── Barre du haut ─── -->
+  <header id="top-bar">
+    <span class="logo">Prompteo</span>
+    <div class="top-actions">
+      <div id="mic-dot-top" class="mic-dot-top" title="Micro actif"></div>
+      <button id="btn-settings" class="btn-icon-round" aria-label="Réglages">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
       </button>
-    </header>
+    </div>
+  </header>
 
-    <div class="panel-body">
-      <label for="script-input" class="label">Colle ton script ici :</label>
-      <textarea id="script-input" class="textarea" rows="10" placeholder="Bonjour et bienvenue dans cette nouvelle vidéo…"></textarea>
+  <!-- ─── Zone du prompteur ─── -->
+  <main id="teleprompter">
+    <div id="prompt-text" class="prompt-text">
+      <p class="placeholder-msg">Colle ton script dans les réglages<br>puis clique <strong>Charger</strong></p>
+    </div>
+  </main>
 
-      <div class="controls-row">
-        <button id="btn-load" class="btn btn-secondary">Charger</button>
-        <button id="btn-start" class="btn btn-primary" disabled>▶ Start</button>
-        <button id="btn-reset" class="btn btn-danger" disabled>⟲ Reset</button>
-      </div>
+  <!-- ─── Bouton START flottant ─── -->
+  <button id="btn-fab" class="btn-fab" aria-label="Démarrer" disabled>
+    <svg id="fab-icon-play" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    <svg id="fab-icon-stop" width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+  </button>
+
+  <!-- ─── Overlay (fond sombre quand drawer ouvert) ─── -->
+  <div id="drawer-overlay" class="drawer-overlay"></div>
+
+  <!-- ─── Drawer (bottom sheet) ─── -->
+  <aside id="drawer" class="drawer" aria-label="Panneau de réglages">
+    <div class="drawer-handle-zone" id="drawer-handle">
+      <div class="drawer-handle"></div>
+    </div>
+
+    <div class="drawer-content">
+      <h2 class="drawer-title">Réglages</h2>
+
+      <label for="script-input" class="label">Script :</label>
+      <textarea id="script-input" class="textarea" rows="8" placeholder="Colle ton script ici…"></textarea>
+
+      <button id="btn-load" class="btn btn-full btn-secondary">Charger le script</button>
+      <button id="btn-reset" class="btn btn-full btn-danger" disabled>⟲ Recommencer</button>
 
       <div class="slider-group">
-        <label for="font-slider" class="label">Taille du texte : <span id="font-size-value">4</span>rem</label>
-        <input type="range" id="font-slider" min="2" max="8" step="0.25" value="4">
+        <label for="font-slider" class="label">Taille du texte : <span id="font-size-value">2.5</span>rem</label>
+        <input type="range" id="font-slider" min="1.5" max="6" step="0.25" value="2.5">
       </div>
 
       <div class="slider-group">
@@ -49,18 +75,6 @@
       </div>
     </div>
   </aside>
-
-  <!-- ─── Bouton flottant pour ré-ouvrir le panneau ─── -->
-  <button id="btn-show-panel" class="btn-float" style="display:none" aria-label="Afficher le panneau">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-  </button>
-
-  <!-- ─── Zone du prompteur ─── -->
-  <main id="teleprompter" class="teleprompter">
-    <div id="prompt-text" class="prompt-text">
-      <p class="placeholder-msg">← Colle ton script et clique sur <strong>Charger</strong></p>
-    </div>
-  </main>
 
   <script src="app.js"></script>
 </body>
