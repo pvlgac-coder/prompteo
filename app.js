@@ -32,9 +32,8 @@
   let recognition    = null;
   let fuzzyThreshold = 0.55;
 
-  // Sécurité anti-saut : fenêtre de recherche et plafond d'avance
-  const LOOKAHEAD           = 25;  // Vision plus large pour les débits rapides
-  const MAX_WORDS_PER_JUMP  = 12;  // Permet de rattraper plus de texte d'un coup
+  // Configuration du suivi
+  const LOOKAHEAD = 40; // Fenêtre large pour ne jamais perdre le fil
 
   // ════════════════════════════════════════════
   // 1. DRAWER
@@ -237,57 +236,41 @@
     matchPhrase(heardWords);
   }
 
-  // ════════════════════════════════════════════
-  // 6. MATCHING — Ancrage + Avance contrôlée
-  // ════════════════════════════════════════════
   /*
-   * Stratégie :
-   * 1. On cherche le mot "ancre" — le premier mot substantiel entendu (≥3 chars)
-   *    dans la fenêtre LOOKAHEAD depuis currentIndex.
-   * 2. Une fois l'ancre positionnée, on avance de (position_ancre - position_ancre_dans_phrase)
-   *    + nombre_de_mots_entendus — ce qui correspond à "la fin de la phrase prononcée".
-   * 3. Le plafond MAX_WORDS_PER_JUMP empêche tout saut brutal.
+   * Stratégie "Furthest Match" :
+   * On parcourt tous les mots entendus dans le transcript actuel.
+   * Pour chaque mot, on cherche s'il existe dans une fenêtre autour de la position actuelle.
+   * On avance le prompteur jusqu'au mot le plus lointain trouvé.
    */
   function matchPhrase(heardWords) {
-    const searchEnd = Math.min(currentIndex + LOOKAHEAD, words.length);
+    const searchStart = Math.max(0, currentIndex - 5); // On regarde un peu en arrière pour l'ancrage
+    const searchEnd   = Math.min(currentIndex + LOOKAHEAD, words.length);
+    
+    let furthestIdxFound = -1;
 
-    // Trouver le mot ancre (premier mot de longueur ≥ 3)
-    const anchorHeard = heardWords.find(w => w.length >= 3) || heardWords[0];
-    const anchorPosInPhrase = heardWords.indexOf(anchorHeard);
+    for (const heard of heardWords) {
+      if (heard.length < 2) continue;
 
-    let bestScore = 0;
-    let anchorIdx = -1;
+      let bestScoreForThisWord = 0;
+      let bestIdxForThisWord   = -1;
 
-    for (let i = currentIndex; i < searchEnd; i++) {
-      const s = similarity(anchorHeard, words[i].normalized);
-      if (s > bestScore) { bestScore = s; anchorIdx = i; }
+      for (let i = searchStart; i < searchEnd; i++) {
+        const score = similarity(heard, words[i].normalized);
+        if (score > bestScoreForThisWord) {
+          bestScoreForThisWord = score;
+          bestIdxForThisWord = i;
+        }
+      }
+
+      if (bestScoreForThisWord >= fuzzyThreshold) {
+        furthestIdxFound = Math.max(furthestIdxFound, bestIdxForThisWord);
+      }
     }
 
-    if (bestScore < fuzzyThreshold || anchorIdx < 0) {
-      console.log(`  ✗ Aucun ancrage pour "${anchorHeard}" (meilleur score: ${bestScore.toFixed(2)})`);
-      return;
+    if (furthestIdxFound !== -1 && furthestIdxFound >= currentIndex) {
+      console.log(`  ✓ Avancement vers index ${furthestIdxFound} ("${words[furthestIdxFound].raw}")`);
+      advanceTo(furthestIdxFound);
     }
-
-    // Position cible = fin de la phrase prononcée dans le script
-    // anchorIdx est où dans le script on a trouvé l'ancre.
-    // On remonte de anchorPosInPhrase pour trouver le début,
-    // puis on avance de (heardWords.length - 1) pour trouver la fin.
-    const phraseStart  = Math.max(currentIndex, anchorIdx - anchorPosInPhrase);
-    const phraseEnd    = phraseStart + heardWords.length - 1;
-
-    // Sécurité : plafond d'avance
-    const targetIdx = Math.min(
-      phraseEnd,
-      currentIndex + MAX_WORDS_PER_JUMP - 1,
-      words.length - 1
-    );
-
-    console.log(
-      `  ✓ Ancrage "${anchorHeard}" → script[${anchorIdx}]="${words[anchorIdx].raw}" (${bestScore.toFixed(2)})`
-      + ` | phrase [${phraseStart}→${phraseEnd}] → cible plafonnée : ${targetIdx}`
-    );
-
-    advanceTo(targetIdx);
   }
 
   // ════════════════════════════════════════════
