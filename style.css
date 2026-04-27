@@ -1,0 +1,258 @@
+/* ════════════════════════════════════════════
+   Prompteo — Teleprompter à reconnaissance vocale
+   Dark-mode, ultra-minimaliste
+   ════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #000000;
+  --surface:     #0d0d0d;
+  --border:      #1a1a1a;
+  --text:        #e0e0e0;
+  --text-dim:    #666666;
+  --accent:      #ffd600;
+  --accent-soft: rgba(255, 214, 0, .12);
+  --danger:      #ff4444;
+  --radius:      8px;
+  --panel-w:     340px;
+  --font-size:   4rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── Panneau de contrôle ─── */
+#control-panel {
+  position: fixed;
+  top: 0; left: 0;
+  width: var(--panel-w);
+  height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: transform .3s ease;
+}
+#control-panel.panel-hidden {
+  transform: translateX(calc(-1 * var(--panel-w)));
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--accent);
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ─── Labels ─── */
+.label {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+/* ─── Textarea ─── */
+.textarea {
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-family: inherit;
+  font-size: .85rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  transition: border-color .2s;
+}
+.textarea:focus { border-color: var(--accent); }
+
+/* ─── Boutons ─── */
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+}
+.btn:active { transform: scale(.96); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+
+.btn-primary   { background: var(--accent); color: #000; }
+.btn-secondary { background: var(--border); color: var(--text); }
+.btn-danger    { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  transition: color .2s;
+}
+.btn-icon:hover { color: var(--text); }
+
+.controls-row {
+  display: flex;
+  gap: 8px;
+}
+.controls-row .btn { flex: 1; }
+
+/* ─── Sliders ─── */
+.slider-group { display: flex; flex-direction: column; gap: 6px; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+/* ─── Debug bar ─── */
+.debug-bar {
+  margin-top: auto;
+  padding: 10px 12px;
+  background: rgba(255,214,0,.06);
+  border-radius: var(--radius);
+  font-size: .75rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+  word-break: break-word;
+}
+.debug-label { color: var(--accent); font-weight: 700; }
+.debug-text  { color: var(--text); }
+
+/* ─── Bouton flottant ─── */
+.btn-float {
+  position: fixed;
+  top: 16px; left: 16px;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: var(--radius);
+  padding: 10px;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+.btn-float:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ─── Teleprompter ─── */
+.teleprompter {
+  margin-left: var(--panel-w);
+  min-height: 100vh;
+  padding: 18vh 10% 50vh 10%;
+  transition: margin-left .3s ease;
+}
+body.panel-collapsed .teleprompter {
+  margin-left: 0;
+}
+
+.prompt-text {
+  font-size: var(--font-size);
+  font-weight: 700;
+  line-height: 1.55;
+  max-width: 80%;
+  margin: 0 auto;
+  color: var(--text);
+}
+
+.placeholder-msg {
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+/* ─── Mots du script ─── */
+.word {
+  display: inline;
+  transition: color .15s, background .15s;
+  border-radius: 4px;
+  padding: 0 2px;
+}
+
+.word.spoken {
+  color: var(--text-dim);
+}
+
+.word.active {
+  color: #000;
+  background: var(--accent);
+}
+
+.word.upcoming {
+  color: var(--text);
+}
+
+/* Séparateur de phrases */
+.sentence-break {
+  display: block;
+  height: .6em;
+}
+
+/* ─── Indicateur micro ─── */
+.mic-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--danger);
+  opacity: 0;
+  transition: opacity .3s;
+  z-index: 300;
+}
+.mic-indicator.active {
+  opacity: 1;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,.5); }
+  50%      { box-shadow: 0 0 0 10px rgba(255,68,68,0); }
+}
