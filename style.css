@@ -126,6 +126,13 @@ body {
 /* ══════════════════════════════
    FAB — Bouton Start/Stop
 ══════════════════════════════ */
+/* Caché quand le drawer est ouvert (géré par JS) */
+.btn-fab.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) scale(0.7);
+}
+
 .btn-fab {
   position: fixed;
   bottom: calc(28px + var(--safe-bottom));
@@ -290,6 +297,8 @@ input[type="range"] {
   width: 100%;
   height: 4px;
   background: var(--surface2);
+  /* Empêche iOS de confondre le drag du slider avec un scroll/tap sur la textarea */
+  touch-action: pan-x;
   border-radius: 2px;
   outline: none;
   cursor: pointer;

@@ -43,11 +43,17 @@
     drawer.classList.add('open');
     drawerOverlay.classList.add('visible');
     document.body.style.overflow = 'hidden';
+    // Cacher le FAB pendant que le drawer est ouvert
+    btnFab.classList.add('hidden');
   }
   function closeDrawer() {
     drawer.classList.remove('open');
     drawerOverlay.classList.remove('visible');
     document.body.style.overflow = '';
+    // Défocaliser la textarea pour éviter que le clavier virtuel se réouvre
+    scriptInput.blur();
+    // Remettre le FAB visible après l'animation de fermeture (350ms)
+    setTimeout(() => btnFab.classList.remove('hidden'), 360);
   }
 
   if (btnSettings) btnSettings.addEventListener('click', openDrawer);
@@ -86,6 +92,8 @@
   btnLoad.addEventListener('click', () => {
     const raw = scriptInput.value.trim();
     if (!raw) return;
+    // Défocuse la textarea AVANT de fermer pour éviter le re-focus sur iOS
+    scriptInput.blur();
     loadScript(raw);
     closeDrawer();
   });
@@ -138,6 +146,14 @@
   tolSlider.addEventListener('input', () => {
     fuzzyThreshold = parseFloat(tolSlider.value);
     tolValue.textContent = fuzzyThreshold.toFixed(2);
+  });
+
+  // Sur mobile, empêcher les sliders de provoquer un re-focus sur la textarea
+  [fontSlider, tolSlider].forEach(slider => {
+    slider.addEventListener('touchstart', e => {
+      scriptInput.blur();
+      e.stopPropagation();
+    }, { passive: true });
   });
 
   // ════════════════════════════════════════════
